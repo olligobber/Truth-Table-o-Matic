@@ -29,7 +29,7 @@ data WFF c =
     (:&:) (WFF c) (WFF c) | -- Conjunction
     (:>:) (WFF c) (WFF c) | -- Implication
     (:=:) (WFF c) (WFF c)   -- Equivalence
-    deriving Eq
+    deriving (Eq, Ord)
 
 -- Get the infix constructors to render properly
 instance Show c => Show (WFF c) where
