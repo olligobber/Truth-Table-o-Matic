@@ -13,6 +13,7 @@ import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
 import Data.String (fromString)
 
+-- Things that can be printed for the user
 class Renderable x where
     render :: x -> Text
 

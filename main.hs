@@ -15,9 +15,11 @@ import WFFParser
 import WFF (WFF(..))
 import Render (render, putRender)
 
+-- Simple prompt for text input
 prompt :: String -> IO Text
 prompt p = putStr p >> hFlush stdout >> TIO.getLine
 
+-- Prompt for a new columns to add, returning a truth table after all are added
 promptCols :: TruthTable Text -> IO (TruthTable Text)
 promptCols table = do
     userInput <- T.splitOn ":" <$> prompt
@@ -42,27 +44,34 @@ promptCols table = do
                 let (newtable, l) = W.runWriter $ addDef table x w
                 _ <- printLog l Report
                 promptCols newtable
-            Right _ -> putStrLn "Too many colons in input" >> promptCols table
+            Right _ ->
+                putStrLn "Invalid format for new column" >> promptCols table
+            -- Parsing error, print to user
             Left e -> print e >> promptCols table
 
+-- Make a truth table from an indexed list of columns to add
 makeTable :: [(Integer, Text)] -> W.Writer Log (TruthTable Text)
 makeTable = foldM
-    ( \table (index, arg) -> if arg == "" then do
+    ( \table (index, arg) ->
+    if arg == "" then do
         W.tell $ err $ "Empty argument: " <> render index
         return table
-    else case traverse (parseWFF $ "Argument " <> show index) $
-        T.splitOn ":" arg of
-            Right [] -> error "Impossible output from splitOn"
-            Right [Prop x] -> addProp table x
-            Right [w] -> addForm table w
-            Right [Prop x, w] -> addDef table x w
-            Right [w, Prop x] -> addDef table x w
-            Right _ -> do
-                W.tell $ err $ "Too many colons in argument " <> render index
-                return table
-            Left e -> do
-                W.tell $ err $ fromString $ show e
-                return table
+    else case
+        traverse (parseWFF $ "Argument " <> show index) $ T.splitOn ":" arg
+    of
+        Right [] -> error "Impossible output from splitOn"
+        Right [Prop x] -> addProp table x
+        Right [w] -> addForm table w
+        Right [Prop x, w] -> addDef table x w
+        Right [w, Prop x] -> addDef table x w
+        Right _ -> do
+            W.tell $ err $
+                "Invalid format for new column in argument " <> render index
+            return table
+        Left e -> do
+            -- Parsing error, send to user
+            W.tell $ err $ fromString $ show e
+            return table
     )
     empty
 
@@ -71,9 +80,14 @@ main :: IO ()
 main = do
     args <- getArgs
     case args of
+        -- No arguments -> interactive mode
         [] -> promptCols empty >>= putRender
+        -- Arguments provided
         _ -> do
-            let (table, l) = W.runWriter $ makeTable $ zip [1..] $
-                    fromString <$> args
+            -- Parse the arguments
+            let (table, l) =
+                    W.runWriter $ makeTable $ zip [1..] $ fromString <$> args
+            -- Print out warnings and errors
             logtype <- printLog l Warning
+            -- Print truth table if no errors occurred
             when (logtype /= Just Error) $ putRender table

@@ -74,6 +74,7 @@ instance Monad WFF where
 instance Foldable WFF where -- Use Traversable instance to define this
     foldMap = foldMapDefault
 
+-- Traversable on propositions
 instance Traversable WFF where
     sequenceA (Prop prop) = Prop <$> prop
     sequenceA (Not wff) = Not <$> sequenceA wff
@@ -82,6 +83,7 @@ instance Traversable WFF where
     sequenceA (wff1 :>: wff2) = (liftA2 (:>:) `on` sequenceA) wff1 wff2
     sequenceA (wff1 :=: wff2) = (liftA2 (:=:) `on` sequenceA) wff1 wff2
 
+-- Text version of ShowS functions
 showParenT :: Bool -> (Text -> Text) -> Text -> Text
 showParenT False t = t
 showParenT True t = ("(" <>) . t . (")" <>)

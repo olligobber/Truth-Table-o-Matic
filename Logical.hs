@@ -7,6 +7,7 @@ import Data.Function (on)
 
 import WFF(WFF(..))
 
+-- Boolean-like types
 class Eq x => Logical x where
     meet :: x -> x -> x -- Logical and
     join :: x -> x -> x -- Logical or
@@ -21,6 +22,7 @@ instance Logical Bool where
     top = True
     bot = False
 
+-- Evaluate a formula whose propositions are booleans
 evaluate :: Logical x => WFF x -> x
 evaluate (Prop x) = x
 evaluate (Not w) = neg $ evaluate w
