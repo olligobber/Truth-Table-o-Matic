@@ -1,6 +1,6 @@
 module Logical (
-    Logical(..),
-    evaluate
+	Logical(..),
+	evaluate
 ) where
 
 import Data.Function (on)
@@ -9,18 +9,18 @@ import WFF(WFF(..))
 
 -- Boolean-like types
 class Eq x => Logical x where
-    meet :: x -> x -> x -- Logical and
-    join :: x -> x -> x -- Logical or
-    neg :: x -> x -- Logical not
-    top :: x -- Logical true
-    bot :: x -- Logical false
+	meet :: x -> x -> x -- Logical and
+	join :: x -> x -> x -- Logical or
+	neg :: x -> x -- Logical not
+	top :: x -- Logical true
+	bot :: x -- Logical false
 
 instance Logical Bool where
-    meet = (&&)
-    join = (||)
-    neg = not
-    top = True
-    bot = False
+	meet = (&&)
+	join = (||)
+	neg = not
+	top = True
+	bot = False
 
 -- Evaluate a formula whose propositions are booleans
 evaluate :: Logical x => WFF x -> x
