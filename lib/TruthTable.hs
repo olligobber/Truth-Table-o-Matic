@@ -60,7 +60,8 @@ instance (Ord a, Renderable a) => Renderable (TruthTable a) where
 					zip (toList $ propositions table) avals
 				acols = evaluate . fmap (assignment !) <$> colvals
 				rendcols = zipWith
-					(\l v -> T.center l ' ' $ if l < 4 then T.take 1 v else v)
+					(\l v -> T.center l ' ' $
+						if l < T.length v then T.take 1 v else v)
 					colWidths $ render <$> acols
 			return $ T.intercalate " │ " rendcols
 
