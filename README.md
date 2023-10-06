@@ -25,16 +25,19 @@ $ cabal run ttom -- "invalid-proposition" "recursion : recursion & 1" "bad : col
 
 The following errors occurred:
     "Argument 1" (line 1, column 9):
-unexpected "p"
-expecting ">" or "->"
+    unexpected "p"
+    expecting ">" or "->"
     Recursive definition: recursion : (recursion∧1)
     Invalid format for new column in argument 3
+
 ```
 
 ```
 $ cabal run
 Enter a column (leave blank to finish): a
+
     Added proposition a
+
 Enter a column (leave blank to finish): a : b /\ c
 
 The following warnings have triggered:
@@ -53,3 +56,17 @@ T │ F │   False
 F │ T │   False
 F │ F │   False
 ```
+
+## Formula Syntax
+
+The following table demonstrates how to input the various components of a formula
+
+Symbol | Input
+----|----
+Propositions | A string of any alphanumeric characters, underscores, and apostrophes
+Brackets | `()`, `[]`, or `{}`
+Not | `-`, `~`, `!`, or `¬`
+Or | `\/`, `\|`, `\|\|`, `+`, `;`, or `∨`
+And | `/\`, `&`, `&&`, `*`, `^`, `,`, or `∧`
+Implies | `>`, `->`, `-->`
+Equals | `=`, `==`, `===`, `====`, ..., `<->`, `<=>`, `↔`
