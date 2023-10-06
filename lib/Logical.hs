@@ -1,11 +1,11 @@
-module Logical (
-	Logical(..),
-	evaluate
-) where
+module Logical
+	( Logical(meet, join, neg, top, bot)
+	, evaluate
+	) where
 
 import Data.Function (on)
 
-import WFF(WFF(..))
+import WFF(WFF(Prop, Not, (:|:), (:&:), (:>:), (:=:)))
 
 -- Boolean-like types
 class Eq x => Logical x where

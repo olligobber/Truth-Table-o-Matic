@@ -18,8 +18,8 @@ import qualified Control.Monad.Writer as W
 import Control.Monad (foldM, replicateM)
 import Data.Foldable (toList)
 
-import Render (Renderable(..))
-import WFF
+import Render (Renderable(render))
+import WFF (WFF, applyMap)
 import Logical (evaluate)
 import Logging (Log, err, warn, report)
 
@@ -44,9 +44,9 @@ instance (Ord a, Renderable a) => Renderable (TruthTable a) where
 			, render <$> toList (formulas table)
 			]
 		colvals = concat
-			[ Prop <$> toList (propositions table)
+			[ pure <$> toList (propositions table)
 			, toList (flatdefs table)
-			, (>>= \x -> maybe (Prop x) id $ M.lookup x $ flatdefs table) <$>
+			, (>>= \x -> maybe (pure x) id $ M.lookup x $ flatdefs table) <$>
 				toList (formulas table)
 			]
 		colWidths = T.length <$> colnames
@@ -58,7 +58,7 @@ instance (Ord a, Renderable a) => Renderable (TruthTable a) where
 			let
 				assignment = M.fromListWith undefined $
 					zip (toList $ propositions table) avals
-				acols = evaluate . (>>= Prop . (assignment !)) <$> colvals
+				acols = evaluate . fmap (assignment !) <$> colvals
 				rendcols = zipWith
 					(\l v -> T.center l ' ' $ if l < 4 then T.take 1 v else v)
 					colWidths $ render <$> acols
@@ -140,7 +140,7 @@ addDef table symbol def
 		newprops = S.fromList (toList def) `S.difference` symbols table
 		-- Replace new name with new definition in old formulas
 		newflats t =
-			(>>= \x -> if x == symbol then flatdef else Prop x) <$> flatdefs t
+			(>>= \x -> if x == symbol then flatdef else pure x) <$> flatdefs t
 
 -- Add a formula to a table
 addForm :: (Renderable a, Ord a) => TruthTable a -> WFF a ->

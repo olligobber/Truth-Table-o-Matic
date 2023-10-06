@@ -9,10 +9,10 @@ import qualified Control.Monad.Writer as W
 import Control.Monad (foldM, when)
 import Data.String (fromString)
 
-import TruthTable
-import Logging
-import WFFParser
-import WFF (WFF(..))
+import TruthTable (TruthTable, addProp, addForm, addDef, empty)
+import Logging (Log, Level(Report, Warning, Error), printLog, err)
+import WFFParser (parseWFF)
+import WFF (WFF(Prop))
 import Render (render, putRender)
 
 -- Simple prompt for text input

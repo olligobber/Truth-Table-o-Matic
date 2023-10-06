@@ -1,10 +1,10 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module Render (
-	Renderable(..),
-	putRender,
-) where
+module Render
+	( Renderable(render)
+	, putRender
+	) where
 
 import Data.Map.Lazy (Map)
 import qualified Data.Map.Lazy as M

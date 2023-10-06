@@ -1,17 +1,17 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Logging (
-	Log(..),
-	Level(..),
-	err,
-	warn,
-	report,
-	printLog
-) where
+module Logging
+	( Log(Log, errors, warnings, reports)
+	, Level(Report, Warning, Error)
+	, err
+	, warn
+	, report
+	, printLog
+	) where
 
 import Data.Text (Text)
 import qualified Data.Text.IO as TIO
-import Control.Monad (forM_)
+import Data.Foldable (traverse_)
 
 -- A monoid for logging at various levels
 data Log = Log {
@@ -53,13 +53,13 @@ printLog (Log [] [] []) _ = return Nothing
 printLog (Log e@(_:_) _ _) _= do
 	putStrLn ""
 	putStrLn "The following errors occurred:"
-	forM_ e putIndent
+	traverse_ putIndent e
 	putStrLn ""
 	return $ Just Error
 printLog (Log [] w@(_:_) _) _ = do
 	putStrLn ""
 	putStrLn "The following warnings have triggered:"
-	forM_ w putIndent
+	traverse_ putIndent w
 	putStrLn ""
 	return $ Just Warning
-printLog (Log [] [] r@(_:_)) _ = Just Report <$ forM_ r putIndent
+printLog (Log [] [] r@(_:_)) _ = Just Report <$ traverse_ putIndent r

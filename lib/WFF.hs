@@ -1,9 +1,9 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module WFF(
-	WFF(..),
-	applyMap
-) where
+module WFF
+	( WFF(Prop, Not, (:|:), (:&:), (:>:), (:=:))
+	, applyMap
+	) where
 
 import Data.Function (on)
 import Control.Applicative (liftA2)
@@ -13,7 +13,7 @@ import Control.Monad (ap)
 import Data.Traversable (foldMapDefault)
 import Data.Text (Text)
 
-import Render (Renderable(..))
+import Render (Renderable(render))
 
 -- Logical connectives
 infix 5 :|:
