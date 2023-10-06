@@ -40,7 +40,7 @@ library
 		, mtl ^>= 2.2
 		, parsec ^>= 3.1
 
-executable Truth-Table-o-Matic
+executable ttom
 	import: shared-properties
 	main-is: Main.hs
 	build-depends:
