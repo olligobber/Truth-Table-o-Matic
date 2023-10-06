@@ -54,7 +54,7 @@ instance Functor WFF where -- Use Monad instance to define this
 	fmap f m = m >>= (return . f)
 
 instance Applicative WFF where -- Use Monad instance to define this
-	pure = return
+	pure = Prop
 	(<*>) = ap
 
 {-
@@ -63,7 +63,6 @@ instance Applicative WFF where -- Use Monad instance to define this
 	substitute propositions for formulas
 -}
 instance Monad WFF where
-	return = Prop
 	(Prop prop)	 >>= f   = f prop
 	(Not wff)	   >>= f   = Not $ wff >>= f
 	(wff1 :|: wff2) >>= f   = ((:|:) `on` (>>= f)) wff1 wff2

@@ -37,7 +37,20 @@ common shared-properties
                         -Wno-prepositive-qualified-module
                         -Wno-tabs
 
-
+library
+    import:           shared-properties
+    exposed-modules:  Logging
+                      Logical
+                      Render
+                      TruthTable
+                      WFF
+                      WFFParser
+    hs-source-dirs:   lib
+    build-depends:    base ^>= 4.15
+                    , text ^>= 2.1
+                    , containers ^>= 0.7
+                    , mtl ^>= 2.2
+                    , parsec ^>= 3.1
 
 executable Truth-Table-o-Matic
     import:           shared-properties
@@ -50,8 +63,7 @@ executable Truth-Table-o-Matic
     -- other-extensions:
     build-depends:    base ^>= 4.15
                     , text ^>= 2.1
-                    , containers ^>= 0.7
                     , mtl ^>= 2.2
-                    , parsec ^>= 3.1
+                    , Truth-Table-o-Matic
     hs-source-dirs:   app
     default-language: Haskell2010

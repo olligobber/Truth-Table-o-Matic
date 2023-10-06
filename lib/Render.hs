@@ -38,6 +38,7 @@ instance (Renderable k, Renderable v) => Renderable (Map k v) where
 	render m = T.unlines $
 		zipWith formatCol rightKeys leftValues
 		where
+			formatCol :: Text -> Text -> Text
 			formatCol k v = k <> " ↦ " <> v
 
 			rendKeys = render <$> M.keys m
