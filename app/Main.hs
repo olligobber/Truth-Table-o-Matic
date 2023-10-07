@@ -14,7 +14,7 @@ import Control.Applicative ((<|>))
 import TruthTable (TruthTable, addProp, addForm, addDef, empty)
 import Logging (Log, Level(Report, Warning, Error), printLog, err)
 import WFFParser (parseWFF)
-import WFF (WFF(Prop))
+import WFF (WFF(Proposition))
 import Render (render, putRender)
 
 -- Simple prompt for text input
@@ -32,7 +32,7 @@ promptCols table = do
 		return table
 	else case traverse (parseWFF "Input") userInput of
 			Right [] -> error "Impossible output from splitOn"
-			Right [Prop x] -> do
+			Right [Proposition x] -> do
 				let (newtable, l) = W.runWriter $ addProp table x
 				_ <- printLog stdout l Report
 				promptCols newtable
@@ -40,11 +40,11 @@ promptCols table = do
 				let (newtable, l) = W.runWriter $ addForm table w
 				_ <- printLog stdout l Report
 				promptCols newtable
-			Right [Prop x, w] -> do
+			Right [Proposition x, w] -> do
 				let (newtable, l) = W.runWriter $ addDef table x w
 				_ <- printLog stdout l Report
 				promptCols newtable
-			Right [w, Prop x] -> do
+			Right [w, Proposition x] -> do
 				let (newtable, l) = W.runWriter $ addDef table x w
 				_ <- printLog stdout l Report
 				promptCols newtable
@@ -66,10 +66,10 @@ makeTable = foldM
 		traverse (parseWFF $ "Argument " <> show index) $ T.splitOn ":" arg
 	of
 		Right [] -> error "Impossible output from splitOn"
-		Right [Prop x] -> addProp table x
+		Right [Proposition x] -> addProp table x
 		Right [w] -> addForm table w
-		Right [Prop x, w] -> addDef table x w
-		Right [w, Prop x] -> addDef table x w
+		Right [Proposition x, w] -> addDef table x w
+		Right [w, Proposition x] -> addDef table x w
 		Right _ -> do
 			W.tell $ err $
 				"Invalid format for new column in argument " <> render index

@@ -1,7 +1,10 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module WFF
-	( WFF(Prop, Not, (:|:), (:&:), (:>:), (:=:))
+	( NullarySymbol(Falsum, Verum)
+	, UnarySymbol(Not)
+	, BinarySymbol(And, Or, Implies, Equals, Greater, Xor, Nand, Nor)
+	, WFF(Proposition, Nullary, Unary, Binary)
 	, applyMap
 	) where
 
@@ -15,46 +18,46 @@ import Data.Text (Text)
 
 import Render (Renderable(render))
 
--- Logical connectives
-infix 5 :|:
-infix 5 :&:
-infix 5 :>:
-infix 5 :=:
+-- Nullary Symbols
+data NullarySymbol = Falsum | Verum deriving (Eq, Ord, Show)
+
+instance Renderable NullarySymbol where
+	render Falsum = "⊥"
+	render Verum = "⊤"
+
+-- Unary Symbols
+data UnarySymbol = Not deriving (Eq, Ord, Show)
+
+instance Renderable UnarySymbol where
+	render Not = "¬"
+
+-- Binary Symbols
+data BinarySymbol = And | Or | Implies | Equals | Greater | Xor | Nand | Nor
+	deriving (Eq, Ord, Show)
+
+instance Renderable BinarySymbol where
+	render And = "∧"
+	render Or = "∨"
+	render Implies = "→"
+	render Equals = "↔"
+	render Greater = ">"
+	render Xor = "<>"
+	render Nand = "↑"
+	render Nor = "↓"
 
 -- Logical formula datatype
-data WFF c =
-	Prop c |				-- Proposition
-	Not (WFF c) |		   -- Negation
-	(:|:) (WFF c) (WFF c) | -- Disjunction
-	(:&:) (WFF c) (WFF c) | -- Conjunction
-	(:>:) (WFF c) (WFF c) | -- Implication
-	(:=:) (WFF c) (WFF c)   -- Equivalence
-	deriving (Eq, Ord)
-
--- Get the infix constructors to render properly
-instance Show c => Show (WFF c) where
-	showsPrec prec (Prop prop) =
-		showParen (prec>10) $ showString "Prop " . showsPrec 11 prop
-	showsPrec prec (Not wff) =
-		showParen (prec>10) $ showString "Not " . showsPrec 11 wff
-	showsPrec prec (wff1 :|: wff2) =
-		showParen (prec>5) $
-			showsPrec 6 wff1 . showString " :|: " . showsPrec 6 wff2
-	showsPrec prec (wff1 :&: wff2) =
-		showParen (prec>5) $
-			showsPrec 6 wff1 . showString " :&: " . showsPrec 6 wff2
-	showsPrec prec (wff1 :>: wff2) =
-		showParen (prec>5) $
-			showsPrec 6 wff1 . showString " :>: " . showsPrec 6 wff2
-	showsPrec prec (wff1 :=: wff2) =
-		showParen (prec>5) $
-			showsPrec 6 wff1 . showString " :=: " . showsPrec 6 wff2
+data WFF c
+	= Proposition c
+	| Nullary NullarySymbol
+	| Unary UnarySymbol (WFF c)
+	| Binary BinarySymbol (WFF c) (WFF c)
+	deriving (Eq, Ord, Show)
 
 instance Functor WFF where -- Use Monad instance to define this
-	fmap f m = m >>= (return . f)
+	fmap f m = m >>= (pure . f)
 
 instance Applicative WFF where -- Use Monad instance to define this
-	pure = Prop
+	pure = Proposition
 	(<*>) = ap
 
 {-
@@ -63,24 +66,20 @@ instance Applicative WFF where -- Use Monad instance to define this
 	substitute propositions for formulas
 -}
 instance Monad WFF where
-	(Prop prop)	 >>= f   = f prop
-	(Not wff)	   >>= f   = Not $ wff >>= f
-	(wff1 :|: wff2) >>= f   = ((:|:) `on` (>>= f)) wff1 wff2
-	(wff1 :&: wff2) >>= f   = ((:&:) `on` (>>= f)) wff1 wff2
-	(wff1 :>: wff2) >>= f   = ((:>:) `on` (>>= f)) wff1 wff2
-	(wff1 :=: wff2) >>= f   = ((:=:) `on` (>>= f)) wff1 wff2
+	(Proposition p) >>= f = f p
+	(Nullary n) >>= _ = Nullary n
+	(Unary u w) >>= f = Unary u $ w >>= f
+	(Binary b w1 w2) >>= f = (Binary b `on` (>>= f)) w1 w2
 
 instance Foldable WFF where -- Use Traversable instance to define this
 	foldMap = foldMapDefault
 
 -- Traversable on propositions
 instance Traversable WFF where
-	sequenceA (Prop prop) = Prop <$> prop
-	sequenceA (Not wff) = Not <$> sequenceA wff
-	sequenceA (wff1 :|: wff2) = (liftA2 (:|:) `on` sequenceA) wff1 wff2
-	sequenceA (wff1 :&: wff2) = (liftA2 (:&:) `on` sequenceA) wff1 wff2
-	sequenceA (wff1 :>: wff2) = (liftA2 (:>:) `on` sequenceA) wff1 wff2
-	sequenceA (wff1 :=: wff2) = (liftA2 (:=:) `on` sequenceA) wff1 wff2
+	sequenceA (Proposition p) = Proposition <$> p
+	sequenceA (Nullary n) = pure $ Nullary n
+	sequenceA (Unary u w) = Unary u <$> sequenceA w
+	sequenceA (Binary b w1 w2) = (liftA2 (Binary b) `on` sequenceA) w1 w2
 
 -- Text version of ShowS functions
 showParenT :: Bool -> (Text -> Text) -> Text -> Text
@@ -92,23 +91,18 @@ showText = (<>)
 
 -- Nice rendering for the user
 rendersPrec :: Int -> (c -> Text) -> WFF c -> Text -> Text
-rendersPrec _ rend (Prop prop) = showText $ rend prop
-rendersPrec prec rend (Not wff) = showParenT (prec>2) $
-	showText "¬" . rendersPrec 2 rend wff
-rendersPrec prec rend (wff1 :|: wff2) = showParenT (prec>1) $
-	rendersPrec 2 rend wff1 . showText "∨" . rendersPrec 2 rend wff2
-rendersPrec prec rend (wff1 :&: wff2) = showParenT (prec>1) $
-	rendersPrec 2 rend wff1 . showText "∧" . rendersPrec 2 rend wff2
-rendersPrec prec rend (wff1 :>: wff2) = showParenT (prec>1) $
-	rendersPrec 2 rend wff1 . showText "→" . rendersPrec 2 rend wff2
-rendersPrec prec rend (wff1 :=: wff2) = showParenT (prec>1) $
-	rendersPrec 2 rend wff1 . showText "↔" . rendersPrec 2 rend wff2
+rendersPrec _ f (Proposition p) = showText $ f p
+rendersPrec _ _ (Nullary n) = showText $ render n
+rendersPrec p f (Unary u w) = showParenT (p>2) $
+	showText (render u) . rendersPrec 2 f w
+rendersPrec p f (Binary b w1 w2) = showParenT (p>1) $
+	rendersPrec 2 f w1 . showText (render b) . rendersPrec 2 f w2
 
 instance Renderable x => Renderable (WFF x) where
-	render wff = rendersPrec 2 render wff ""
+	render wff = rendersPrec 1 render wff ""
 
 -- Apply a mapping from match to some formula
 applyMap :: Ord x => Map x (WFF x) -> WFF x -> WFF x
 applyMap m w = w >>= \p -> case M.lookup p m of
-	Nothing -> Prop p
+	Nothing -> pure p
 	Just n -> n

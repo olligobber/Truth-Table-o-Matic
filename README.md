@@ -11,24 +11,24 @@ Each instruction is either a new proposition variable, such as `P` or `prop_var1
 ## Example Usage
 
 ```
-$ cabal run ttom -- "A" "C: A && A'" "A -> C"
-A │ A' │ C : (A∧A') │ (A→C)
-──┼────┼────────────┼──────
-T │  T │    True    │  True
-T │  F │    False   │ False
-F │  T │    False   │  True
-F │  F │    False   │  True
+$ cabal run ttom -- "A" "C: A && AA" "A -> C"
+A │ AA │ C : A∧AA │ A→C
+──┼────┼──────────┼────
+T │  T │   True   │  T
+T │  F │   False  │  F
+F │  T │   False  │  T
+F │  F │   False  │  T
 ```
 
 ```
 $ cabal run ttom -- "invalid-proposition" "recursion : recursion & 1" "bad : col : spec"
 
 The following errors occurred:
-    "Argument 1" (line 1, column 9):
-    unexpected "p"
-    expecting ">" or "->"
-    Recursive definition: recursion : (recursion∧1)
-    Invalid format for new column in argument 3
+	"Argument 1" (line 1, column 9):
+	unexpected "p"
+	expecting "-" or ">"
+	Recursive definition: recursion : recursion∧1
+	Invalid format for new column in argument 3
 
 ```
 
@@ -36,25 +36,25 @@ The following errors occurred:
 $ cabal run
 Enter a column (leave blank to finish): a
 
-    Added proposition a
+	 Added proposition a
 
 Enter a column (leave blank to finish): a : b /\ c
 
 The following warnings have triggered:
-    Overwriting proposition a with new definition
+	Overwriting proposition a with new definition
 
 Enter a column (leave blank to finish): a : a /\ d
 
 The following errors occurred:
-    Name a is already defined
+	Name a is already defined
 
 Enter a column (leave blank to finish):
-b │ c │ a : (b∧c)
-──┼───┼──────────
-T │ T │    True
-T │ F │   False
-F │ T │   False
-F │ F │   False
+b │ c │ a : b∧c
+──┼───┼────────
+T │ T │   True
+T │ F │  False
+F │ T │  False
+F │ F │  False
 ```
 
 ## Formula Syntax
@@ -63,10 +63,16 @@ The following table demonstrates how to input the various components of a formul
 
 Symbol | Input
 ----|----
-Propositions | A string of any alphanumeric characters, underscores, and apostrophes
+Propositions | A string of any alphanumeric characters
 Brackets | `()`, `[]`, or `{}`
+Verum | `⊥`, or `_\|_`
+Falsum | `⊤`, or `%`
 Not | `-`, `~`, `!`, or `¬`
-Or | `\/`, `\|`, `\|\|`, `+`, `;`, or `∨`
-And | `/\`, `&`, `&&`, `*`, `^`, `,`, or `∧`
-Implies | `>`, `->`, `-->`
-Equals | `=`, `==`, `===`, `====`, ..., `<->`, `<=>`, `↔`
+And | `/\`, `&`, `&&`, `*`, or `∧`
+Or | `\/`, `\|`, `\|\|`, or `∨`
+Implies | `->`, `-->`, `=>`, `==>`, or `→`
+Equals | `=`, `==`, `<->`, `<=>`, or `↔`
+Greater Than | `>`
+Xor | `+`, `<>`, `⊻`, `~=`, `!=`, or `/=`
+Nand | `/\|\`, `!&`, `~&`, or `↑`
+Nor | `\\|/`, `!\|`, `~\|`, or `↓`

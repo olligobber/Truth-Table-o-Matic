@@ -4,96 +4,164 @@ module WFFParser (parseWFF) where
 
 import Text.Parsec
 	( Parsec, ParseError
-	, string, spaces, alphaNum, char, (<?>), between, many1, parse, eof
+	, string, spaces, alphaNum, char, (<?>), between, many1, parse, eof, choice
 	)
 import Control.Applicative ((<|>))
 import Data.Text (Text)
 import Data.String (fromString)
 import Data.Function ((&))
 
-import WFF(WFF(Prop, Not, (:|:), (:&:), (:>:), (:=:)))
-
-{-
-	The grammar used here is
-	S -> E B
-	E -> ( S ) | U | P
-	B -> O E | empty
-	U -> N E
-	P -> any proposition
-	O -> any binary operator
-	N -> not symbol
--}
-
-type WFFParser = Parsec Text () (WFF Text)
-
-{-
-	Parse a proposition, made of alpha-numeric characters, underscores, and
-	apostrophes
--}
-propositionP :: WFFParser
-propositionP = Prop . fromString <$>
-	many1 (alphaNum <|> char '_' <|> char '\'') <?> "proposition"
-
--- Parse Not symbols
-notP :: Parsec Text () (WFF x -> WFF x)
-notP = Not <$ (string "-" <|> string "~" <|> string "!" <|> string "¬") <?>
-	"negation"
-
--- Parse Or symbols
-orP :: Parsec Text () (WFF x -> WFF x -> WFF x)
-orP = (:|:) <$
-	(string "\\/" <|> (string "|" <* (string "|" <|> string "")) <|>
-		string "+" <|> string ";" <|> string "∨") <?> "disjunction operator"
-
--- Parse And symbols
-andP :: Parsec Text () (WFF x -> WFF x -> WFF x)
-andP = (:&:) <$
-	(string "/\\" <|> (string "&" <* (string "&" <|> string "")) <|>
-		string "*" <|> string "^" <|> string "," <|> string "∧") <?>
-	"conjunction operator"
-
--- Parse Implies symbols
-impliesP :: Parsec Text () (WFF x -> WFF x -> WFF x)
-impliesP = (:>:) <$
-	(string ">" <|> (string "-" *> (string ">" <|> string "->")) <|>
-		string "→") <?>
-	"implication operator"
-
--- Parse Equals symbols
-equalP :: Parsec Text () (WFF x -> WFF x -> WFF x)
-equalP = (:=:) <$
-	(("=" <$ many1 (string "=")) <|>
-		(string "<" *> (string "->" <|> string "=>")) <|> string "↔") <?>
-	"equivalence operator"
-
--- Parse any unary expression
-unaryP :: WFFParser
-unaryP = notP <*> (spaces *> safeExpressionP) <?> "unary formula"
-
--- Parse any binary operator
-binOpP :: Parsec Text () (WFF x -> WFF x -> WFF x)
-binOpP = orP <|> andP <|> impliesP <|> equalP <?> "binary operator"
-
--- Parse a binary or other expression
-binaryOrExpP :: WFFParser
-binaryOrExpP = (&) <$> (safeExpressionP <* spaces) <*> (
-	((fmap flip binOpP <* spaces) <*> safeExpressionP) <|>
-	(id <$ string "")
+import WFF
+	( NullarySymbol(Falsum, Verum)
+	, UnarySymbol(Not)
+	, BinarySymbol(And, Or, Implies, Equals, Greater, Xor, Nand, Nor)
+	, WFF(Proposition, Nullary, Unary, Binary)
 	)
 
+type TextParser = Parsec Text ()
+type WFFParser = TextParser (WFF Text)
+
+-- Parse nullary symbols
+nullarySymbolP :: TextParser NullarySymbol
+nullarySymbolP = choice
+	[ Falsum <$ (string "⊥" <|> string "_|_")
+	, Verum <$ (string "⊤" <|> string "%")
+	] <?> "nullary symbol"
+
+-- Parse unary symbols
+unarySymbolP :: TextParser UnarySymbol
+unarySymbolP =
+	Not <$
+	(string "-" <|> string "~" <|> string "!" <|> string "¬") <?>
+	"unary symbol"
+
+{-
+	Binary symbols have the following ways of being inputted:
+		And =
+			"/\" or
+			"*" or
+			"∧" or
+			one or more "&"
+		Or =
+			"\/" or
+			"∨" or
+			one or more "|"
+		Implies =
+			one or more "-" followed by ">" or
+			one or more "=" followed by ">" or
+			"→"
+		Equals =
+			one or more "=" or
+			"<" followed by one or more "-" followed by ">" or
+			"<" followed by one or more "=" followed by ">" or
+			"↔"
+		Greater =
+			">"
+		Xor =
+			"+" or
+			"<>" or
+			"⊻" or
+			"~=" or
+			"!=" or
+			"/="
+		Nand =
+			"/|\" or
+			"~&" or
+			"!&" or
+			"↑"
+		Nor =
+			"\|/" or
+			"~|" or
+			"!|" or
+			"↓"
+	Unfortunately some of these share the same first character(s) so the
+	parser is not simple
+-}
+
+binarySymbolP :: TextParser BinarySymbol
+binarySymbolP = choice
+	[ string "/" *> choice
+		[ Nand <$ string "|\\"
+		, And <$ string "\\"
+		, Xor <$ string "="
+		]
+	, string "\\" *> choice
+		[ Nor <$ string "|/"
+		, Or <$ string "/"
+		]
+	, many1 (string "=") *> choice
+		[ Implies <$ string ">"
+		, pure Equals
+		]
+	, string "<" *> choice
+		[ Xor <$ string ">"
+		, Equals <$ ((many1 (string "-") <|> many1 (string "=")) *> string ">")
+		]
+	, string "~" *> choice
+		[ Nand <$ string "&"
+		, Nor <$ string "|"
+		, Xor <$ string "="
+		]
+	, string "!" *> choice
+		[ Nand <$ string "&"
+		, Nor <$ string "|"
+		, Xor <$ string "="
+		]
+	, And <$ many1 (string "&")
+	, And <$ (string "*" <|> string "∧")
+	, Or <$ many1 (string "|")
+	, Or <$ string "∨"
+	, Implies <$ ((many1 (string "-") *> string ">") <|> string "→")
+	, Equals <$ string "↔"
+	, Greater <$ string ">"
+	, Xor <$ (string "+" <|> string "⊻")
+	, Nand <$ string "↑"
+	, Nor <$ string "↓"
+	] <?> "binary symbol"
+
+-- Parse a proposition, made of alpha-numeric characters
+propositionP :: WFFParser
+propositionP = Proposition . fromString <$> many1 alphaNum <?> "proposition"
+
 -- Make a parser work inside brackets
-bracketted :: Parsec Text () x -> Parsec Text () x
+bracketted :: TextParser x -> TextParser x
 bracketted p = sb '(' ')' <|> sb '[' ']' <|> sb '{' '}' where
 	sb o c = between (char o) (char c) $ spaces *> p <* spaces
 
--- Parse an expression that can be nested in another expression safely
-safeExpressionP :: WFFParser
-safeExpressionP = bracketted binaryOrExpP <|> unaryP <|> propositionP
+{-
+	The grammer used here is
+	S -> T R
+	T -> ( S ) | U T | N | P
+	R -> B T | empty
+	P -> any proposition
+	B -> any binary operator
+	U -> any unary operator
+	N -> any nullary operator
+-}
 
--- Parse any expression
+-- Parse an expression, this is S in the grammar
 expressionP :: WFFParser
-expressionP = spaces *> binaryOrExpP <* spaces
+expressionP = (&) <$> safeExpressionP <*> restExpressionP
+
+-- Parse an expression that can be safely nested, this is T in the grammar
+safeExpressionP :: WFFParser
+safeExpressionP = choice
+	[ bracketted expressionP
+	, Unary <$> unarySymbolP <*> (spaces *> safeExpressionP)
+	, Nullary <$> nullarySymbolP
+	, propositionP
+	]
+
+restExpressionP :: TextParser (WFF Text -> WFF Text)
+restExpressionP = spaces *> choice
+	[ do
+		b <- binarySymbolP
+		spaces
+		e <- safeExpressionP
+		pure $ \x -> Binary b x e
+	, pure id
+	]
 
 -- Given a source and formula in text, parse it
 parseWFF :: String -> Text -> Either ParseError (WFF Text)
-parseWFF = parse $ expressionP <* eof
+parseWFF = parse $ spaces *> expressionP <* spaces <* eof
