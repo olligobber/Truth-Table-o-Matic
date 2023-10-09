@@ -65,8 +65,8 @@ Symbol | Input
 ----|----
 Propositions | A string of any alphanumeric characters
 Brackets | `()`, `[]`, or `{}`
-Verum | `⊥`, or `_\|_`
-Falsum | `⊤`, or `%`
+Falsum | `⊥`, or `_\|_`
+Verum | `⊤`, or `%`
 Not | `-`, `~`, `!`, or `¬`
 And | `/\`, `&`, `&&`, `*`, or `∧`
 Or | `\/`, `\|`, `\|\|`, or `∨`
