@@ -16,34 +16,34 @@ import Control.Monad (ap)
 import Data.Traversable (foldMapDefault)
 import Data.Text (Text)
 
-import Render (Renderable(render))
+import Render (Renderable(renderText))
 
 -- Nullary Symbols
 data NullarySymbol = Falsum | Verum deriving (Eq, Ord, Show)
 
 instance Renderable NullarySymbol where
-	render Falsum = "⊥"
-	render Verum = "⊤"
+	renderText Falsum = "⊥"
+	renderText Verum = "⊤"
 
 -- Unary Symbols
 data UnarySymbol = Not deriving (Eq, Ord, Show)
 
 instance Renderable UnarySymbol where
-	render Not = "¬"
+	renderText Not = "¬"
 
 -- Binary Symbols
 data BinarySymbol = And | Or | Implies | Equals | Greater | Xor | Nand | Nor
 	deriving (Eq, Ord, Show)
 
 instance Renderable BinarySymbol where
-	render And = "∧"
-	render Or = "∨"
-	render Implies = "→"
-	render Equals = "↔"
-	render Greater = ">"
-	render Xor = "<>"
-	render Nand = "↑"
-	render Nor = "↓"
+	renderText And = "∧"
+	renderText Or = "∨"
+	renderText Implies = "→"
+	renderText Equals = "↔"
+	renderText Greater = ">"
+	renderText Xor = "<>"
+	renderText Nand = "↑"
+	renderText Nor = "↓"
 
 -- Logical formula datatype
 data WFF c
@@ -92,14 +92,14 @@ showText = (<>)
 -- Nice rendering for the user
 rendersPrec :: Int -> (c -> Text) -> WFF c -> Text -> Text
 rendersPrec _ f (Proposition p) = showText $ f p
-rendersPrec _ _ (Nullary n) = showText $ render n
+rendersPrec _ _ (Nullary n) = showText $ renderText n
 rendersPrec p f (Unary u w) = showParenT (p>2) $
-	showText (render u) . rendersPrec 2 f w
+	showText (renderText u) . rendersPrec 2 f w
 rendersPrec p f (Binary b w1 w2) = showParenT (p>1) $
-	rendersPrec 2 f w1 . showText (render b) . rendersPrec 2 f w2
+	rendersPrec 2 f w1 . showText (renderText b) . rendersPrec 2 f w2
 
 instance Renderable x => Renderable (WFF x) where
-	render wff = rendersPrec 1 render wff ""
+	renderText wff = rendersPrec 1 renderText wff ""
 
 -- Apply a mapping from match to some formula
 applyMap :: Ord x => Map x (WFF x) -> WFF x -> WFF x

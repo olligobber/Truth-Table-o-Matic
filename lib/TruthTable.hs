@@ -18,7 +18,7 @@ import qualified Control.Monad.Writer as W
 import Control.Monad (foldM, replicateM)
 import Data.Foldable (toList)
 
-import Render (Renderable(render))
+import Render (Renderable(renderText))
 import WFF (WFF, applyMap)
 import Logical (evaluate)
 import Logging (Log, err, warn, report)
@@ -36,12 +36,12 @@ data TruthTable a = TruthTable {
 
 -- Pretty rendering
 instance (Ord a, Renderable a) => Renderable (TruthTable a) where
-	render table = T.unlines $ titles:seperators:formatted where
+	renderText table = T.unlines $ titles:seperators:formatted where
 		colnames = concat
-			[ render <$> toList (propositions table)
-			, (\(k,v) -> render k <> " : " <> render v) <$>
+			[ renderText <$> toList (propositions table)
+			, (\(k,v) -> renderText k <> " : " <> renderText v) <$>
 				M.assocs (definitions table)
-			, render <$> toList (formulas table)
+			, renderText <$> toList (formulas table)
 			]
 		colvals = concat
 			[ pure <$> toList (propositions table)
@@ -62,7 +62,7 @@ instance (Ord a, Renderable a) => Renderable (TruthTable a) where
 				rendcols = zipWith
 					(\l v -> T.center l ' ' $
 						if l < T.length v then T.take 1 v else v)
-					colWidths $ render <$> acols
+					colWidths $ renderText <$> acols
 			return $ T.intercalate " │ " rendcols
 
 -- Set of valid propositions in formulas
@@ -78,14 +78,19 @@ addProp :: (Renderable a, Ord a) => TruthTable a -> a ->
 	Writer Log (TruthTable a)
 addProp table prop
 	| prop `M.member` definitions table =  do
-		W.tell $ err $ "Name clash between new proposition " <> render prop <>
+		W.tell $ err $
+			"Name clash between new proposition " <>
+			renderText prop <>
 			" and existing definition"
 		return table
 	| prop `S.member` propositions table = do
-		W.tell $ warn $ "Proposition " <> render prop <> " is already added"
+		W.tell $ warn $
+			"Proposition " <>
+			renderText prop <>
+			" is already added"
 		return table
 	| otherwise = do
-		W.tell $ report $ "Added proposition " <> render prop
+		W.tell $ report $ "Added proposition " <> renderText prop
 		return $ TruthTable
 			(prop `S.insert` propositions table)
 			(definitions table)
@@ -100,23 +105,31 @@ addDef :: (Renderable a, Ord a) => TruthTable a -> a -> WFF a ->
 	Writer Log (TruthTable a)
 addDef table symbol def
 	| symbol `M.member` definitions table = do
-		W.tell $ err $ "Name " <> render symbol <> " is already defined"
+		W.tell $ err $ "Name " <> renderText symbol <> " is already defined"
 		return table
 	| symbol `elem` flatdef = do
 		W.tell $ err $
-			"Recursive definition: " <> render symbol <> " : " <> render flatdef
+			"Recursive definition: " <>
+			renderText symbol <>
+			" : " <>
+			renderText flatdef
 		return table
 	| symbol `S.member` propositions table = do
-		W.tell $ warn $ "Overwriting proposition " <> render symbol <>
+		W.tell $ warn $
+			"Overwriting proposition " <>
+			renderText symbol <>
 			" with new definition"
 		addDef withoutSymbol symbol def
 	| def `S.member` formulas table = do
-		W.tell $ warn $ "Replacing column " <> render def <>
-			" with new definition as " <> render symbol
+		W.tell $ warn $
+			"Replacing column " <>
+			renderText def <>
+			" with new definition as " <>
+			renderText symbol
 		addDef withoutDefinition symbol def
 	| otherwise = do
 		newtable <- foldM addProp table newprops
-		W.tell $ report $ "Added definition of " <> render symbol
+		W.tell $ report $ "Added definition of " <> renderText symbol
 		return $ TruthTable
 			(propositions newtable)
 			(M.insert symbol def $ definitions newtable)
@@ -148,15 +161,15 @@ addForm :: (Renderable a, Ord a) => TruthTable a -> WFF a ->
 	Writer Log (TruthTable a)
 addForm table form
 	| form `elem` formulas table = do
-		W.tell $ warn $ "Column " <> render form <> " is already added"
+		W.tell $ warn $ "Column " <> renderText form <> " is already added"
 		return table
 	| form `elem` definitions table = do
-		W.tell $ warn $ "Column " <> render form <>
+		W.tell $ warn $ "Column " <> renderText form <>
 			" already exists as a defined symbol"
 		return table
 	| otherwise = do
 		newtable <- foldM addProp table newprops
-		W.tell $ report $ "Added column for formula " <> render form
+		W.tell $ report $ "Added column for formula " <> renderText form
 		return $ TruthTable
 			(propositions newtable)
 			(definitions table)
