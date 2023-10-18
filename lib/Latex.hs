@@ -1,14 +1,29 @@
 module Latex
 	( LatexMath
+	, top
+	, bot
+	, neg
+	, land
+	, lor
+	, rightarrow
+	, leftrightarrow
+	, uparrow
+	, downarrow
+	, lt
+	, gt
+	, bracket
+	, mathLetters
 	, LatexInline
 	, inlineMath
 	, LatexParagraphs
 	, displayMath
 	, paragraph
 	, LatexPages
-	, page
+	, simplePage
+	, fittingPage
 	, LatexDocument
 	, simpleDocument
+	, getCode
 	, makePDF
 	) where
 
@@ -16,16 +31,20 @@ import Data.Set (Set)
 import qualified Data.Set as Set
 import Text.LaTeX
 	( PackageName
-	, par, pagebreak, documentclass, article, a4paper, document
-	, usepackage, mathDisplay, renderFile, hfill, (%:)
+	, par, pagebreak, documentclass, article, a4paper, document, autoParens
+	, usepackage, mathDisplay, renderFile, hfill, (%:), raw, render
 	)
 import Text.LaTeX.Base.Syntax ( LaTeX(TeXMath), MathType(Parentheses) )
 import Text.LaTeX.Packages.AMSMath (amsmath)
+import Text.LaTeX.Base.Class (comm0, env0)
 import Data.Coerce (coerce)
 import System.IO.Temp (withSystemTempDirectory)
 import System.FilePath ((</>))
 import System.Process (callCommand)
 import System.Directory (copyFile)
+import qualified Data.Text as Text
+import Data.Text (Text)
+import Data.Char (isAlpha)
 
 -- Latex content with a set of packages it requires
 data LatexWithPackages = LatexWithPackages
@@ -41,6 +60,9 @@ instance Semigroup LatexWithPackages where
 instance Monoid LatexWithPackages where
 	mempty = LatexWithPackages mempty mempty
 
+latexNoPackages :: LaTeX -> LatexWithPackages
+latexNoPackages = flip LatexWithPackages mempty
+
 -- Latex math environment content
 -- When math is embedded anywhere, the amsmath package will always be added
 -- so there is no need to explicitly include it in the package list
@@ -52,7 +74,47 @@ instance Semigroup LatexMath where
 instance Monoid LatexMath where
 	mempty = LatexMath mempty
 
--- TODO add commands to create various maths symbols
+top :: LatexMath
+top = LatexMath $ latexNoPackages $ comm0 "top"
+
+bot :: LatexMath
+bot = LatexMath $ latexNoPackages $ comm0 "bot"
+
+neg :: LatexMath
+neg = LatexMath $ latexNoPackages $ comm0 "neg"
+
+land :: LatexMath
+land = LatexMath $ latexNoPackages $ comm0 "land"
+
+lor :: LatexMath
+lor = LatexMath $ latexNoPackages $ comm0 "lor"
+
+rightarrow :: LatexMath
+rightarrow = LatexMath $ latexNoPackages $ comm0 "rightarrow"
+
+leftrightarrow :: LatexMath
+leftrightarrow = LatexMath $ latexNoPackages $ comm0 "leftrightarrow"
+
+uparrow :: LatexMath
+uparrow = LatexMath $ latexNoPackages $ comm0 "uparrow"
+
+downarrow :: LatexMath
+downarrow = LatexMath $ latexNoPackages $ comm0 "downarrow"
+
+gt :: LatexMath
+gt = LatexMath $ latexNoPackages $ raw ">"
+
+lt :: LatexMath
+lt = LatexMath $ latexNoPackages $ raw "<"
+
+bracket :: LatexMath -> LatexMath
+bracket (LatexMath latex) = LatexMath $ LatexWithPackages
+	(autoParens $ code latex)
+	(packages latex)
+
+mathLetters :: Text -> LatexMath
+mathLetters c | Text.all isAlpha c = LatexMath $ latexNoPackages $ raw c
+mathLetters _ = error "Cannot user mathLetters for non-letters"
 
 -- Latex inline content
 newtype LatexInline = LatexInline { fromInline :: LatexWithPackages }
@@ -68,8 +130,6 @@ inlineMath (LatexMath math) = LatexInline $ LatexWithPackages
 	(TeXMath Parentheses $ code math)
 	(packages math <> Set.singleton amsmath)
 
--- TODO add commands to write plain sentences
-
 -- Latex paragraphed content
 newtype LatexParagraphs = LatexParagraphs { fromParagraph :: LatexWithPackages }
 
@@ -78,9 +138,6 @@ instance Semigroup LatexParagraphs where
 		LatexParagraphs $ LatexWithPackages
 			(code l1 <> par <> code l2)
 			(packages l1 <> packages l2)
-
--- instance Monoid LatexParagraphs where
--- 	mempty = LatexParagraphs mempty
 
 displayMath :: LatexMath -> LatexParagraphs
 displayMath (LatexMath math) = LatexParagraphs $ LatexWithPackages
@@ -98,11 +155,13 @@ instance Semigroup LatexPages where
 		(code l1 <> pagebreak Nothing <> code l2)
 		(packages l1 <> packages l2)
 
--- instance Monoid LatexPages where
--- 	mempty = LatexPages mempty
+simplePage :: LatexParagraphs -> LatexPages
+simplePage = coerce
 
-page :: LatexParagraphs -> LatexPages
-page = coerce
+fittingPage :: LatexInline -> LatexPages
+fittingPage (LatexInline latex) = LatexPages $ LatexWithPackages
+	(env0 "inctext" $ raw "[/igr/border=1em]" <> code latex)
+	(packages latex <> Set.singleton "incgraph")
 
 -- Latex documents
 newtype LatexDocument = LatexDocument { fromDocument :: LaTeX }
@@ -116,6 +175,9 @@ simpleDocument (LatexPages latex) = LatexDocument $
 		(if code latex == mempty
 			then hfill %: "cannot have empty document, so use an hfill to pad"
 			else code latex)
+
+getCode :: LatexDocument -> Text
+getCode = render . fromDocument
 
 -- Turns a latex document into a pdf file at the given location
 -- Note this requires a working latex and rubber installation
